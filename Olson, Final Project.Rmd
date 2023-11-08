@@ -1,0 +1,328 @@
+---
+title: "Final project"
+author: "Lucas Olson"
+date: "3/4/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+```
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(tibble)
+library(ggplot2)
+library(RColorBrewer)
+library(stringr)
+library(tmap)
+library(sf)
+library(scales)
+library(ggrepel)
+```
+
+```{r Background}
+# http://stla.github.io/stlapblog/posts/Numextract.html
+   numextract <- function(string){ 
+      str_extract(string, "\\-*\\d+\\.*\\d*")
+   } 
+
+# Define list of Tribal Nations to include in the dataset
+Tribal_Nations <- c("Cowlitz", "Snoqualmie", "Stillaguamish", "Jamestown S'Klallam", "Sauk-Suiattle", "Shoalwater Bay", "Hoh", "Upper Skagit", "Quileute", "Squaxin Island", "Nisqually", "Port Gamble", "Skokomish", "Kalispel", "Chehalis", "Lower Elwha", "Quinault", "Nooksack", "Makah", "Spokane", "Swinomish", "Muckleshoot", "Lummi", "Colville", "Port Madison", "Tulalip", "Yakama Nation", "Samish", "Puyallup")
+
+# Define subset of data for those bordering the Salish Sea and Pacific ocean coast
+Salish_Nations <- c("Jamestown S'Klallam", "Sauk-Suiattle", "Shoalwater Bay", "Snoqualmie", "Hoh", "Upper Skagit", "Quileute", "Squaxin Island", "Nisqually", "Port Gamble", "Skokomish", "Chehalis", "Lower Elwha", "Quinault", "Nooksack", "Makah", "Swinomish", "Muckleshoot", "Lummi", "Port Madison", "Tulalip","Samish", "Puyallup", "Stillaguamish")
+
+```
+
+
+```{r CleaningData}
+WA_Tribal_Data_Compiled <- read_excel("./WA Tribal Data, Compiled.xlsx")
+
+#abbreviating Tribal nations for readability
+WA_Tribal_Data_Compiled <- WA_Tribal_Data_Compiled %>% 
+  rename(Chehalis_count = 'Chehalis Reservation and Off-Reservation Trust Land, WA Value') %>%
+  rename(Chehalis_MOE = `Chehalis Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Colville_count = `Colville Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Colville_MOE = `Colville Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Cowlitz_count = `Cowlitz Reservation, WA Value`) %>%
+  rename(Cowlitz_MOE = `Cowlitz Reservation, WA MOE`) %>%
+  rename(Hoh_count = `Hoh Indian Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Hoh_MOE = `Hoh Indian Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename("Jamestown S'Klallam_count" = `Jamestown S'Klallam Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename("Jamestown S'Klallam_MOE" = `Jamestown S'Klallam Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Kalispel_count = `Kalispel Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Kalispel_MOE = `Kalispel Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename('Lower Elwha_count' = `Lower Elwha Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename('Lower Elwha_MOE' = `Lower Elwha Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Lummi_count = `Lummi Reservation, WA Value`) %>%
+  rename(Lummi_MOE = `Lummi Reservation, WA MOE`) %>%
+  rename(Makah_count = `Makah Indian Reservation, WA Value`) %>%
+  rename(Makah_MOE = `Makah Indian Reservation, WA MOE`) %>%
+  rename(Muckleshoot_count = `Muckleshoot Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Muckleshoot_MOE = `Muckleshoot Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Nisqually_count = `Nisqually Reservation, WA Value`) %>%
+  rename(Nisqually_MOE = `Nisqually Reservation, WA MOE`) %>%
+  rename(Nooksack_count = `Nooksack Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Nooksack_MOE = `Nooksack Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename('Port Gamble_count' = `Port Gamble Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename('Port Gamble_MOE' = `Port Gamble Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename('Port Madison_count' = `Port Madison Reservation, WA Value`) %>%
+  rename('Port Madison_MOE' = `Port Madison Reservation, WA MOE`) %>%
+  rename(Puyallup_count = `Puyallup Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Puyallup_MOE = `Puyallup Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Quileute_count = `Quileute Reservation, WA Value`) %>%
+  rename(Quileute_MOE = `Quileute Reservation, WA MOE`) %>%
+  rename(Quinault_count = `Quinault Reservation, WA Value`) %>%
+  rename(Quinault_MOE = `Quinault Reservation, WA MOE`) %>%
+  rename(Samish_count = `Samish TDSA, WA Value`) %>%
+  rename(Samish_MOE = `Samish TDSA, WA MOE`) %>%
+  rename('Sauk-Suiattle_count' = `Sauk-Suiattle Reservation, WA Value`) %>%
+  rename('Sauk-Suiattle_MOE' = `Sauk-Suiattle Reservation, WA MOE`) %>%
+  rename('Shoalwater Bay_count' = `Shoalwater Bay Indian Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename('Shoalwater Bay_MOE' = `Shoalwater Bay Indian Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Skokomish_count = `Skokomish Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Skokomish_MOE = `Skokomish Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Snoqualmie_count = `Snoqualmie Reservation, WA Value`) %>%
+  rename(Snoqualmie_MOE = `Snoqualmie Reservation, WA MOE`) %>%
+  rename(Spokane_count = `Spokane Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Spokane_MOE = `Spokane Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename('Squaxin Island_count' = `Squaxin Island Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename('Squaxin Island_MOE' = `Squaxin Island Reservation and Off-Reservation Trust Land, WA MOE`) %>% 
+  rename(Stillaguamish_count = `Stillaguamish Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Stillaguamish_MOE = `Stillaguamish Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Swinomish_count = `Swinomish Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Swinomish_MOE = `Swinomish Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Tulalip_count = `Tulalip Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Tulalip_MOE = `Tulalip Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename('Upper Skagit_count' = `Upper Skagit Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename('Upper Skagit_MOE' = `Upper Skagit Reservation and Off-Reservation Trust Land, WA MOE`) %>%
+  rename(Yakama_count = `Yakama Nation Reservation and Off-Reservation Trust Land, WA Value`) %>%
+  rename(Yakama_MOE = `Yakama Nation Reservation and Off-Reservation Trust Land, WA MOE`)
+
+WA_Tribal_Data_Compiled <- WA_Tribal_Data_Compiled %>% 
+  select(-c('Cowlitz_count', 'Cowlitz_MOE', 'Snoqualmie_count', 'Snoqualmie_MOE', 'Stillaguamish_count', 'Stillaguamish_MOE'))
+
+#convert values and MOEs to numeric values
+MOE_range <- seq(5, 55, 2)
+WA_Tribal_Data_Compiled[,MOE_range] <- sapply(WA_Tribal_Data_Compiled[,MOE_range], numextract)
+WA_Tribal_Data_Compiled[,4:55] <- sapply(WA_Tribal_Data_Compiled[,4:55], as.numeric)
+
+#convert to long format
+WA_Tribal_Data_Long <- pivot_longer(data=WA_Tribal_Data_Compiled, cols=4:55, names_to=c('Tribal Nation', '.value'), names_pattern='([^_]*)_?(.*)')
+
+# add new column for Salish or not
+WA_Tribal_Data_Long$Salish <- WA_Tribal_Data_Long$`Tribal Nation` %in% Salish_Nations
+```
+
+```{r PeopleSubset}
+#create subset for demographic data
+WA_Tribal_Data_People <- subset(WA_Tribal_Data_Long, Topic=='People', select=c(2:7))
+
+# add new column for percent of total
+WA_Tribal_Data_People$percent <- WA_Tribal_Data_People$count /
+  WA_Tribal_Data_People$count[WA_Tribal_Data_People$Subject == WA_Tribal_Data_People$Subject &
+                              WA_Tribal_Data_People$Title == 'Total population' &
+                              WA_Tribal_Data_People$`Tribal Nation` ==
+                              WA_Tribal_Data_People$`Tribal Nation`]
+
+```
+
+```{r PopDotplot}
+#local variable for plotting population
+Tribal_subset <- subset(WA_Tribal_Data_People, Subject=='Sex and Age' & 
+                Title=='Total population')
+
+#recoding Salish variable  
+Tribal_subset$Salish <- as.character(Tribal_subset$Salish)
+Tribal_subset$Salish <- recode(Tribal_subset$Salish, 
+                                  "TRUE" = "Yes", 
+                                  "FALSE" = "No")
+
+#dotplot
+p <- ggplot(data=Tribal_subset, 
+            aes(x=reorder(Tribal_subset$'Tribal Nation', count), 
+                y=count, 
+                color=Salish)) +
+  geom_point(size=.6) +
+  geom_errorbar(aes(ymin=count-MOE, ymax=count+MOE), width=.4) +
+  scale_y_continuous(label=comma) +
+  scale_color_manual(values = brewer.pal(2, "Set1")) +
+  xlab("Native Reservations in WA State") +
+  ylab("Total Population") +
+  coord_flip() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"), 
+        legend.position = c(0.8, 0.2),
+        legend.key=element_blank())
+
+ggsave('p.jpg', height = 5)
+
+```
+
+```{r DotplotRace}
+#subset for racial data
+Tribal_subset <- subset(WA_Tribal_Data_People, Subject=='Race' & 
+                 !(Title %in% c('Total population','One race')))
+Tribal_subset$Title <- factor(Tribal_subset$Title, order = TRUE, 
+                              levels =c("Black or African American", "Asian", "Native Hawaiian and Other Pacific Islander", "Some other race", "Two or more races", "White", "American Indian and Alaska Native"))
+
+#recoding salish variable
+Tribal_subset$Salish <- as.character(Tribal_subset$Salish)
+Tribal_subset$Salish <- recode(Tribal_subset$Salish, 
+                                  "TRUE" = "Yes", 
+                                  "FALSE" = "No")
+
+#custom labels
+cl <- as.character(Tribal_subset$`Tribal Nation`)
+cl[Tribal_subset$percent<.75] <- ""
+
+#creating dotplot
+q <- ggplot(data=Tribal_subset, aes(x=Title, y=percent)) +
+  geom_dotplot(binaxis='y', 
+               stackdir='center', 
+               stackratio=.2, 
+               dotsize=.6, 
+               alpha=.4, 
+               aes(fill=Salish)) +
+  scale_fill_manual(values = brewer.pal(2, "Set1")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2)) +
+  coord_flip() +
+  xlab("Race") +
+  ylab("Percent of WA Reservation Population") +
+  geom_text_repel(aes(label=cl), 
+                  size=2, 
+                  alpha=0.75, 
+                  segment.size=.3, 
+                  max.overlaps = Inf) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"), 
+        legend.position = c(0.8, 0.3), 
+        legend.key=element_blank())
+
+ggsave('q.jpg', height=4)
+```
+
+```{r Scatter}
+#subset for racial data
+Tribal_subset <- subset(WA_Tribal_Data_People, Subject=='Race' & 
+                 !(Title %in% 'One race'))
+                 
+#recoding Salish variable  
+Tribal_subset$Salish <- as.character(Tribal_subset$Salish)
+Tribal_subset$Salish <- recode(Tribal_subset$Salish, 
+                                  "TRUE" = "Yes", 
+                                  "FALSE" = "No")
+
+Tribal_subset <- bind_cols(select(filter(Tribal_subset, Title=='Total population'),'Tribal Nation'),
+                           select(filter(Tribal_subset, Title=='Total population'),count),
+                          select(filter(Tribal_subset, Title=='American Indian and Alaska Native'),percent))
+
+Tribal_subset$AIAN <- Tribal_subset$count*Tribal_subset$percent
+
+ggplot(Tribal_subset, aes(x=log10(count), y=log10(AIAN))) +
+  geom_point() +
+  geom_abline(slope=1, intercept=0) +
+  geom_text_repel(aes(label=Tribal_subset$'Tribal Nation')) +
+    theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"), 
+        legend.position = c(0.8, 0.3), 
+        legend.key=element_blank())
+
+ggsave("s.jpg")
+  
+```
+
+
+```{r EconSubset}
+#create subset of data for economic variables
+WA_Tribal_Data_Economy <- subset(WA_Tribal_Data_Long, Topic=='Economy', select=c(2:7))
+
+# add new column for percent of total
+WA_Tribal_Data_Economy$percent <- WA_Tribal_Data_Economy$count /
+  WA_Tribal_Data_Economy$count[WA_Tribal_Data_Economy$Subject == WA_Tribal_Data_Economy$Subject &
+                              WA_Tribal_Data_Economy$Title == 'Total households' &
+                              WA_Tribal_Data_Economy$`Tribal Nation` == WA_Tribal_Data_Economy$`Tribal Nation`]
+```
+
+```{r DotPlotIncome}
+#creating subset for charting income distribution
+Tribal_subset <- subset(WA_Tribal_Data_Economy, 
+                        Subject=='Income and Benefits (In 2019 inflation-adjusted dollars)' & 
+                 !(Title %in% c('Total households', 'Median household income (dollars)', 'Mean household income (dollars)')))
+
+Tribal_subset$Title <- factor(Tribal_subset$Title, order = TRUE, levels =c("Less than $10,000", "$10,000 to $14,999", "$15,000 to $24,999", "$25,000 to $34,999", "$35,000 to $49,999", "$50,000 to $74,999", "$75,000 to $99,999", "$100,000 to $149,999", "$150,000 to $199,000", "$200,000 or more"))
+
+#recoding salish variable
+Tribal_subset$Salish <- as.character(Tribal_subset$Salish)
+Tribal_subset$Salish <- recode(Tribal_subset$Salish, 
+                                  "TRUE" = "Yes", 
+                                  "FALSE" = "No")
+
+r <- ggplot(data=Tribal_subset, 
+            aes(x=Title, y=percent)) +
+    geom_violin(color="grey") +
+    geom_dotplot(binaxis='y', 
+                 stackdir='center', 
+                 stackratio=.3, 
+                 dotsize=.4, 
+                 alpha=.4, 
+                 aes(fill=Salish)) +
+    scale_fill_manual(values = brewer.pal(2, "Set1")) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 2)) +
+    xlab("Income Bracket") +
+    ylab("Percent of Reservation Population") +
+    coord_flip() + 
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.line = element_line(colour = "black"),
+          legend.position = c(0.9, 0.2),
+          legend.key=element_blank())
+
+ggsave('r.jpg')
+```
+
+```{r ReservationMap}
+# https://catalog.data.gov/dataset/tiger-line-shapefile-2018-nation-u-s-current-american-indian-alaska-native-native-hawaiian-area
+
+states <- st_read('cb_2018_us_state_500k/cb_2018_us_state_500k.shp')
+states <- states[states$NAME == 'Washington',]
+
+WArez <- st_read('cb_2018_us_aiannh_500k/cb_2018_us_aiannh_500k.shp')
+WArez <- WArez[WArez$NAME %in% Tribal_Nations,]
+WArez$Salish <- WArez$NAME %in% Salish_Nations
+
+WArez$Salish <- as.character(WArez$Salish)
+
+WArez$Salish <- recode(WArez$Salish, 
+                                  "TRUE" = "Yes", 
+                                  "FALSE" = "No")
+
+WA <- tm_shape(states) +
+  tm_polygons(col='white')
+
+#brewer.pal(5, "Pastel1")
+
+withRez <- WA +
+  tm_shape(WArez) +
+  tm_polygons(col='Salish', palette=brewer.pal(2, "Pastel1"), alpha=.7) +
+  tm_text(text='NAME', size=.6, auto.placement=4) +
+  tm_layout(legend.stack = 'horizontal') #+
+
+tmap_save(withRez, 'WA.jpg') 
+  
+#WArez[1,] %>% t() %>% pander::pander()
+#states[,1] %>% t() %>% pander::pander()
+```
+
